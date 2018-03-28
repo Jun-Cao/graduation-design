@@ -1,7 +1,7 @@
 #基本训练模型详解与API学习
-from skimage import io,transform
-import os
-import glob
+from skimage import io,transform  #io用于文件读取，transform主要是图像变换
+import os  #文件/目录管理
+import glob #匹配符合字符串的文件夹和文件
 import numpy as np
 import tensorflow as tf
 
@@ -12,31 +12,33 @@ h = 32
 c = 1
 
 #mnist数据集中训练数据和测试数据保存地址
-train_path = "./icmt/train/"
-test_path = "./icmt/test/"
+train_path = "./icmt-2.1/train/"
+test_path = "./icmt-2.1/test/"
 
 #读取图片及其标签函数
 def read_image(path):
-    label_dir = [path+x for x in os.listdir(path) if os.path.isdir(path+x)]
+    label_dir = [path+x for x in os.listdir(path) if os.path.isdir(path+x)]  #os.listdir(path) 返回路径path目录中的列表，os.path.isdir判断是否为目录
     images = []
     labels = []
     for index,folder in enumerate(label_dir):
         for img in glob.glob(folder+'/*.tif'):
             print("reading the image:%s"%img)
             image = io.imread(img)
-            image = transform.resize(image,(w,h,c))
+            image = transform.resize(image,(w,h,c))  #重新设置尺寸
             images.append(image)
             labels.append(index)
+    #asarray(array, dtype=) 转换数组内元素类型
     return np.asarray(images,dtype=np.float32),np.asarray(labels,dtype=np.int32)
 
 #读取训练数据及测试数据            
 train_data,train_label = read_image(train_path)
 test_data,test_label = read_image(test_path)
 
+
 #打乱训练数据及测试数据
 train_image_num = len(train_data)
-train_image_index = np.arange(train_image_num)
-np.random.shuffle(train_image_index)
+train_image_index = np.arange(train_image_num)  #返回n-m的list
+np.random.shuffle(train_image_index) #使数组参数乱序
 train_data = train_data[train_image_index]
 train_label = train_label[train_image_index]
 
@@ -46,6 +48,7 @@ np.random.shuffle(test_image_index)
 test_data = test_data[test_image_index]
 test_label = test_label[test_image_index]
 
+
 #搭建CNN
 x = tf.placeholder(tf.float32,[None,w,h,c],name='x')
 y_ = tf.placeholder(tf.int32,[None],name='y_')
@@ -54,11 +57,11 @@ def inference(input_tensor,train,regularizer):
 
     #第一层：卷积层，过滤器的尺寸为5×5，深度为6,不使用全0补充，步长为1。
     #尺寸变化：32×32×1->28×28×6
-    with tf.variable_scope('layer1-conv1'):
-        conv1_weights = tf.get_variable('weight',[5,5,c,6],initializer=tf.truncated_normal_initializer(stddev=0.1))
-        conv1_biases = tf.get_variable('bias',[6],initializer=tf.constant_initializer(0.0))
-        conv1 = tf.nn.conv2d(input_tensor,conv1_weights,strides=[1,1,1,1],padding='VALID')
-        relu1 = tf.nn.relu(tf.nn.bias_add(conv1,conv1_biases))
+    with tf.variable_scope('layer1-conv1'):  #提供名为'layer1-conv1'的上下文管理器
+        conv1_weights = tf.get_variable('weight',[5,5,c,6],initializer=tf.truncated_normal_initializer(stddev=0.1)) #创建变量 #tf.truncated_normal_initializer()生成截断正态分布的随机数
+        conv1_biases = tf.get_variable('bias',[6],initializer=tf.constant_initializer(0.0)) #tf.constant_initializer(0.0) 生成常数
+        conv1 = tf.nn.conv2d(input_tensor,conv1_weights,strides=[1,1,1,1],padding='VALID') 
+        relu1 = tf.nn.relu(tf.nn.bias_add(conv1,conv1_biases)) #这个函数的作用是计算激活函数relu，即max(features, 0)，即将矩阵中每行的非最大值置0。
 
     #第二层：池化层，过滤器的尺寸为2×2，使用全0补充，步长为2。
     #尺寸变化：28×28×6->14×14×6
@@ -104,7 +107,7 @@ def inference(input_tensor,train,regularizer):
     with tf.variable_scope('layer6-fc2'):
         fc2_weights = tf.get_variable('weight',[120,84],initializer=tf.truncated_normal_initializer(stddev=0.1))
         if regularizer != None:
-            tf.add_to_collection('losses',regularizer(fc2_weights))
+            tf.add_to_collection('losses',regularizer(fc2_weights))  #将变量添加到计算图
         fc2_biases = tf.get_variable('bias',[84],initializer=tf.truncated_normal_initializer(stddev=0.1))
         fc2 = tf.nn.relu(tf.matmul(fc1,fc2_weights) + fc2_biases)
         if train:
@@ -124,15 +127,15 @@ def inference(input_tensor,train,regularizer):
 #正则化，交叉熵，平均交叉熵，损失函数，最小化损失函数，预测和实际equal比较，tf.equal函数会得到True或False，
 #accuracy首先将tf.equal比较得到的布尔值转为float型，即True转为1.，False转为0，最后求平均值，即一组样本的正确率。
 #比如：一组5个样本，tf.equal比较为[True False True False False],转化为float型为[1. 0 1. 0 0],准确率为2./5=40%。
-regularizer = tf.contrib.layers.l2_regularizer(0.001)
+regularizer = tf.contrib.layers.l2_regularizer(0.001)  #返回一个正则化函数
 y = inference(x,False,regularizer)
-cross_entropy = tf.nn.sparse_softmax_cross_entropy_with_logits(logits=y,labels=y_)
-cross_entropy_mean = tf.reduce_mean(cross_entropy)
+cross_entropy = tf.nn.sparse_softmax_cross_entropy_with_logits(logits=y,labels=y_)  #cross_entropy为交叉熵，计算最后一层是softmax层的cross entropy
+cross_entropy_mean = tf.reduce_mean(cross_entropy) #求平均值
 loss = cross_entropy_mean + tf.add_n(tf.get_collection('losses'))
-train_op = tf.train.AdamOptimizer(0.001).minimize(loss)
+train_op = tf.train.AdamOptimizer(0.001).minimize(loss) #AdamOptimizer优化器，最小化损失
 correct_prediction = tf.equal(tf.cast(tf.argmax(y,1),tf.int32),y_)
-accuracy = tf.reduce_mean(tf.cast(correct_prediction,tf.float32))
-
+accuracy = tf.reduce_mean(tf.cast(correct_prediction,tf.float32)) #reduce_mean求张量平均数；cast将第一个参数，转换为第二个参数的形式； 
+ 
 #每次获取batch_size个样本进行训练或测试
 def get_batch(data,label,batch_size):
     for start_index in range(0,len(data)-batch_size+1,batch_size):
