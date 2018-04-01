@@ -134,6 +134,7 @@ cross_entropy_mean = tf.reduce_mean(cross_entropy) #求平均值
 loss = cross_entropy_mean + tf.add_n(tf.get_collection('losses'))
 train_op = tf.train.AdamOptimizer(0.001).minimize(loss) #AdamOptimizer优化器，最小化损失
 correct_prediction = tf.equal(tf.cast(tf.argmax(y,1),tf.int32),y_)
+
 accuracy = tf.reduce_mean(tf.cast(correct_prediction,tf.float32)) #reduce_mean求张量平均数；cast将第一个参数，转换为第二个参数的形式； 
  
 #每次获取batch_size个样本进行训练或测试
@@ -159,6 +160,14 @@ with tf.Session() as sess:
         for train_data_batch,train_label_batch in get_batch(train_data,train_label,batch_size):
             _,err,acc = sess.run([train_op,loss,accuracy],feed_dict={x:train_data_batch,y_:train_label_batch})
             train_loss+=err;train_acc+=acc;batch_num+=1
+
+            print("y是：\n")
+            print(tf.cast(tf.argmax(y,1),tf.int32))
+            print("y_是： \n")
+            print(y_)
+            print("correct_prediction是：\n")
+            print(correct_prediction)
+        
         print("train loss:",train_loss/batch_num)
         print("train acc:",train_acc/batch_num)
 
