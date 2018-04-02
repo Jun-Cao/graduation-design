@@ -1,4 +1,4 @@
-#模型保存
+#模型保存并用于被提取，实现单个图片的识别
 from skimage import io,transform
 import os
 import glob
@@ -132,7 +132,7 @@ loss = cross_entropy_mean + tf.add_n(tf.get_collection('losses'))
 train_op = tf.train.AdamOptimizer(0.001).minimize(loss)
 correct_prediction = tf.equal(tf.cast(tf.argmax(y,1),tf.int32),y_)
 #输出识别结果
-result = tf.cast(tf.argmax(y,1),tf.int32)
+results = tf.cast(tf.argmax(y,1),tf.int32,name='results')
 accuracy = tf.reduce_mean(tf.cast(correct_prediction,tf.float32)) 
 
 
@@ -149,7 +149,7 @@ with tf.Session() as sess:
 
     #将所有样本训练10次，每次训练中以64个为一组训练完所有样本。
     #train_num可以设置大一些。
-    train_num = 2
+    train_num = 5
     batch_size = 64
 
 
@@ -187,7 +187,7 @@ with tf.Session() as sess:
     # print x_img   
 
     #我的代码S
-    output = sess.run(result, feed_dict={x:im,y_:la})
+    output = sess.run(results, feed_dict={x:im,y_:la})
     print('单图测试')
     print('y值为：', output)
     
