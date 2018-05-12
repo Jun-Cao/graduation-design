@@ -97,7 +97,7 @@ def inference(input_tensor,train,regularizer):
         fc1_biases = tf.get_variable('bias',[120],initializer=tf.constant_initializer(0.1))
         fc1 = tf.nn.relu(tf.matmul(reshaped,fc1_weights) + fc1_biases)
         if train:
-            fc1 = tf.nn.dropout(fc1,0.5)
+            fc1 = tf.nn.dropout(fc1,0.5) #随机选择一部分权值不更新
 
     #第六层：全连接层，120->84的全连接
     #尺寸变化：比如一组训练样本为64，那么尺寸变化为64×120->64×84
@@ -124,7 +124,7 @@ def inference(input_tensor,train,regularizer):
 #正则化，交叉熵，平均交叉熵，损失函数，最小化损失函数，预测和实际equal比较，tf.equal函数会得到True或False，
 #accuracy首先将tf.equal比较得到的布尔值转为float型，即True转为1.，False转为0，最后求平均值，即一组样本的正确率。
 #比如：一组5个样本，tf.equal比较为[True False True False False],转化为float型为[1. 0 1. 0 0],准确率为2./5=40%。
-regularizer = tf.contrib.layers.l2_regularizer(0.001)
+regularizer = tf.contrib.layers.l2_regularizer(0.001)  #返回一个L2正则化函数
 y = inference(x,False,regularizer)
 cross_entropy = tf.nn.sparse_softmax_cross_entropy_with_logits(logits=y,labels=y_)
 cross_entropy_mean = tf.reduce_mean(cross_entropy)

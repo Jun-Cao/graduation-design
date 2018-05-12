@@ -3,15 +3,23 @@ import cv2
 import tensorflow as tf    
 import numpy as np 
 from skimage import io,transform  
-from sys import path    
-#用于将自定义输入图片反转  
-# def reversePic(src):  
-#         # 图像反转    
-#     for i in range(src.shape[0]):  
-#         for j in range(src.shape[1]):  
-#             src[i,j] = 255 - src[i,j]  
-#     return src   
-            
+from sys import path
+
+from skimage import io,transform
+import os
+import glob   
+
+#读取图片及其标签函数
+def read_image(path):
+    images = []
+    for img in glob.glob(path+'/*.tif'):
+        print("reading the image:%s"%img)
+        image = io.imread(img)
+        image = transform.resize(image,(32,32,1))
+        image = np.reshape(image , [-1,32,32,1])
+        images.append(image)
+    return np.asarray(images,dtype=np.float32)
+
 def main():    
     sess = tf.InteractiveSession()    
 #模型恢复  
@@ -27,20 +35,54 @@ def main():
   
       
 
-    la = [2]
-    im = io.imread('./images/8.tif')
-    #调整大小    
-    im = transform.resize(im,(32,32,1)) 
-    im = np.reshape(im , [-1,32,32,1])  
-    #类型转换
-    im = np.asarray(im,dtype=np.float32) 
-    la = np.asarray(la,dtype=np.int32)
+    # la = [2]
+    # im = io.imread('./images/D.tif')
 
-    output = sess.run(results, feed_dict={x:im,y_:la})
-    print('单图测试')
-    print('y值为：', output)
+    # #调整大小    
+    # im = transform.resize(im,(32,32,1)) 
+    # im = np.reshape(im , [-1,32,32,1])
+
+    # #类型转换
+    # im = np.asarray(im,dtype=np.float32) 
+    # la = np.asarray(la,dtype=np.int32)
+
+    path = "./images/"
+    switch = {
+        '[0]': '0',
+        '[1]': '1',
+        '[2]': '2',
+        '[3]': '3',
+        '[4]': '4',
+        '[5]': '5',
+        '[6]': '6',
+        '[7]': '7',
+        '[8]': '8',
+        '[9]': 'A',
+        '[10]': 'B',
+        '[11]': 'C',
+        '[12]': 'D',
+        '[13]': 'E',
+        '[14]': 'F',
+        '[15]': 'G',
+        '[16]': 'H',
+        '[17]': 'P',
+        '[18]': 'S',
+        '[19]': 'T',
+        '[21]': 'Y',
+    }
+    result = []
+    dataArr = read_image(path)
+    print('单图测试：')
+    for data in dataArr:
+        res = sess.run(results, feed_dict={x:data,y_:[]})
+        res = str(res)
+        result.append(switch[res])
+    print('识别结果为：', result) 
     #关闭会话    
-    sess.close()    
+    sess.close()  
+
+
+      
     
 if __name__ == '__main__':    
     main()  

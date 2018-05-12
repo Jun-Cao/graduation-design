@@ -1,4 +1,4 @@
-#模型保存
+#模型保存以及单个图片的识别
 from skimage import io,transform
 import os
 import glob
@@ -149,7 +149,7 @@ with tf.Session() as sess:
 
     #将所有样本训练10次，每次训练中以64个为一组训练完所有样本。
     #train_num可以设置大一些。
-    train_num = 2
+    train_num = 10
     batch_size = 64
 
 
@@ -162,12 +162,12 @@ with tf.Session() as sess:
         print("train loss:",train_loss/batch_num)
         print("train acc:",train_acc/batch_num)
 
-        # test_loss,test_acc,batch_num = 0, 0, 0
-        # for test_data_batch,test_label_batch in get_batch(test_data,test_label,batch_size):
-        #     err,acc = sess.run([loss,accuracy],feed_dict={x:test_data_batch,y_:test_label_batch})
-        #     test_loss+=err;test_acc+=acc;batch_num+=1
-        # print("test loss:",test_loss/batch_num)
-        # print("test acc:",test_acc/batch_num)
+        test_loss,test_acc,batch_num = 0, 0, 0
+        for test_data_batch,test_label_batch in get_batch(test_data,test_label,batch_size):
+            err,acc = sess.run([loss,accuracy],feed_dict={x:test_data_batch,y_:test_label_batch})
+            test_loss+=err;test_acc+=acc;batch_num+=1
+        print("test loss:",test_loss/batch_num)
+        print("test acc:",test_acc/batch_num)
 
     #保存模型
     saver = tf.train.Saver()   

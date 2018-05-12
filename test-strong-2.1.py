@@ -77,7 +77,7 @@ def inference(input_tensor,train,regularizer):
         relu2 = tf.nn.relu(tf.nn.bias_add(conv2,conv2_biases))
 
     #第四层：池化层，过滤器的尺寸为2×2，使用全0补充，步长为2。
-    #尺寸变化：10×10×6->5×5×16
+    #尺寸变化：10×10×16->5×5×16
     with tf.variable_scope('layer4-pool2'):
         pool2 = tf.nn.max_pool(relu2,ksize=[1,2,2,1],strides=[1,2,2,1],padding='SAME')
 
@@ -88,7 +88,7 @@ def inference(input_tensor,train,regularizer):
     nodes = pool_shape[1]*pool_shape[2]*pool_shape[3]
     reshaped = tf.reshape(pool2,[-1,nodes])
 
-    #第五层：全连接层，nodes=5×5×16=400，400->120的全连接
+    #第五层：全连接层，nodes=5×5×16=400，400->120的全连接(卷积核大小为5*5*120)
     #尺寸变化：比如一组训练样本为64，那么尺寸变化为64×400->64×120
     #训练时，引入dropout，dropout在训练时会随机将部分节点的输出改为0，dropout可以避免过拟合问题。
     #这和模型越简单越不容易过拟合思想一致，和正则化限制权重的大小，使得模型不能任意拟合训练数据中的随机噪声，以此达到避免过拟合思想一致。
@@ -113,8 +113,8 @@ def inference(input_tensor,train,regularizer):
         if train:
             fc2 = tf.nn.dropout(fc2,0.5)
 
-    #第七层：全连接层（近似表示），84->10的全连接
-    #尺寸变化：比如一组训练样本为64，那么尺寸变化为64×84->64×10。最后，64×10的矩阵经过softmax之后就得出了64张图片分类于每种数字的概率，
+    #第七层：全连接层（近似表示），84->21的全连接
+    #尺寸变化：比如一组训练样本为64，那么尺寸变化为64×84->64×21。最后，64×21的矩阵经过softmax之后就得出了64张图片分类于每种数字的概率，
     #即得到最后的分类结果。
     with tf.variable_scope('layer7-fc3'):
         fc3_weights = tf.get_variable('weight',[84,21],initializer=tf.truncated_normal_initializer(stddev=0.1))
@@ -133,8 +133,8 @@ cross_entropy = tf.nn.sparse_softmax_cross_entropy_with_logits(logits=y,labels=y
 cross_entropy_mean = tf.reduce_mean(cross_entropy) #求平均值
 loss = cross_entropy_mean + tf.add_n(tf.get_collection('losses'))
 train_op = tf.train.AdamOptimizer(0.001).minimize(loss) #AdamOptimizer优化器，最小化损失
-correct_prediction = tf.equal(tf.cast(tf.argmax(y,1),tf.int32),y_)
-
+#得到正确率
+correct_prediction = tf.equal(tf.cast(tf.argmax(y,1),tf.int32),y_) #argmax求数组中最大值的索引
 accuracy = tf.reduce_mean(tf.cast(correct_prediction,tf.float32)) #reduce_mean求张量平均数；cast将第一个参数，转换为第二个参数的形式； 
  
 #每次获取batch_size个样本进行训练或测试
@@ -150,7 +150,7 @@ with tf.Session() as sess:
 
     #将所有样本训练10次，每次训练中以64个为一组训练完所有样本。
     #train_num可以设置大一些。
-    train_num = 21
+    train_num = 10
     batch_size = 64
 
 
@@ -160,14 +160,6 @@ with tf.Session() as sess:
         for train_data_batch,train_label_batch in get_batch(train_data,train_label,batch_size):
             _,err,acc = sess.run([train_op,loss,accuracy],feed_dict={x:train_data_batch,y_:train_label_batch})
             train_loss+=err;train_acc+=acc;batch_num+=1
-
-            print("y是：\n")
-            print(tf.cast(tf.argmax(y,1),tf.int32))
-            print("y_是： \n")
-            print(y_)
-            print("correct_prediction是：\n")
-            print(correct_prediction)
-        
         print("train loss:",train_loss/batch_num)
         print("train acc:",train_acc/batch_num)
 

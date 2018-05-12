@@ -1,9 +1,10 @@
-#模型保存并用于被提取，实现单个图片的识别
+#模型保存以及单个图片的识别
 from skimage import io,transform
 import os
 import glob
 import numpy as np
 import tensorflow as tf
+import time
 
 
 #将所有的图片重新设置尺寸为32*32
@@ -14,6 +15,7 @@ c = 1
 #mnist数据集中训练数据和测试数据保存地址
 train_path = "./icmt/train/"
 test_path = "./icmt/test/"
+
 
 #读取图片及其标签函数
 def read_image(path):
@@ -125,16 +127,15 @@ def inference(input_tensor,train,regularizer):
 #accuracy首先将tf.equal比较得到的布尔值转为float型，即True转为1.，False转为0，最后求平均值，即一组样本的正确率。
 #比如：一组5个样本，tf.equal比较为[True False True False False],转化为float型为[1. 0 1. 0 0],准确率为2./5=40%。
 regularizer = tf.contrib.layers.l2_regularizer(0.001)
-y = inference(x,False,regularizer)
+y = inference(x,True,regularizer)
 cross_entropy = tf.nn.sparse_softmax_cross_entropy_with_logits(logits=y,labels=y_)
 cross_entropy_mean = tf.reduce_mean(cross_entropy)
 loss = cross_entropy_mean + tf.add_n(tf.get_collection('losses'))
 train_op = tf.train.AdamOptimizer(0.001).minimize(loss)
 correct_prediction = tf.equal(tf.cast(tf.argmax(y,1),tf.int32),y_)
 #输出识别结果
-results = tf.cast(tf.argmax(y,1),tf.int32,name='results')
+result = tf.cast(tf.argmax(y,1),tf.int32)
 accuracy = tf.reduce_mean(tf.cast(correct_prediction,tf.float32)) 
-
 
 #每次获取batch_size个样本进行训练或测试
 def get_batch(data,label,batch_size):
@@ -149,28 +150,48 @@ with tf.Session() as sess:
 
     #将所有样本训练10次，每次训练中以64个为一组训练完所有样本。
     #train_num可以设置大一些。
-    train_num = 5
+    train_num = 10
     batch_size = 64
 
+    #log为训练日志
+    log = ''
+    #当前时间数据
+    all_time = ''
+    start_time = ''
+    end_time = ''
 
     for i in range(train_num):
-
+        #训练
         train_loss,train_acc,batch_num = 0, 0, 0
         for train_data_batch,train_label_batch in get_batch(train_data,train_label,batch_size):
             _,err,acc = sess.run([train_op,loss,accuracy],feed_dict={x:train_data_batch,y_:train_label_batch})
-            train_loss+=err;train_acc+=acc;batch_num+=1
+            train_loss+=err;train_acc+=acc;batch_num += 1
         print("train loss:",train_loss/batch_num)
         print("train acc:",train_acc/batch_num)
+        trainLog = "train loss:" + str(train_loss/batch_num) + "\n" + "train acc:" + str(train_acc/batch_num) + "\n\n"
+        #测试
+        test_loss,test_acc,batch_num = 0, 0, 0
+        for test_data_batch,test_label_batch in get_batch(test_data,test_label,batch_size):
+            err,acc = sess.run([loss,accuracy],feed_dict={x:test_data_batch,y_:test_label_batch})
+            test_loss+=err;test_acc+=acc;batch_num+=1
+        print("test loss:",test_loss/batch_num)
+        print("test acc:",test_acc/batch_num)
+        testLog = "test loss:" + str(test_loss/batch_num) + "\n" + "test acc:" + str(test_acc/batch_num) + "\n\n"
 
-        # test_loss,test_acc,batch_num = 0, 0, 0
-        # for test_data_batch,test_label_batch in get_batch(test_data,test_label,batch_size):
-        #     err,acc = sess.run([loss,accuracy],feed_dict={x:test_data_batch,y_:test_label_batch})
-        #     test_loss+=err;test_acc+=acc;batch_num+=1
-        # print("test loss:",test_loss/batch_num)
-        # print("test acc:",test_acc/batch_num)
+        #训练过程数据
+        if i == 0:
+            start_time = time.asctime(time.localtime(time.time()))
+        if i == train_num - 1:
+            end_time = time.asctime(time.localtime(time.time()))
+            all_time = start_time + end_time
+        log = log + testLog + trainLog + all_time
 
+    #训练数据保存
+    log_path = "./log/log.txt"
+    with open(log_path, "w+") as file:
+        file.write(log)
     #保存模型
-    saver = tf.train.Saver()   
+    saver = tf.train.Saver()
     saver.save(sess, "model_data/model")
     print("模型保存成功")
 
@@ -182,14 +203,7 @@ with tf.Session() as sess:
     #调整大小    
     im = np.asarray(im,dtype=np.float32) 
     la = np.asarray(la,dtype=np.int32)
-      
-    #输出图像矩阵  
-    # print x_img   
 
-    #我的代码S
-    output = sess.run(results, feed_dict={x:im,y_:la})
+    output = sess.run(result, feed_dict={x:im,y_:la})
     print('单图测试')
     print('y值为：', output)
-    
-
-
